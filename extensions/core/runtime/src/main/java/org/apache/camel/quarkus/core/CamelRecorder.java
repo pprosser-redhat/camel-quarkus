@@ -27,9 +27,11 @@ import org.apache.camel.reifier.ProcessorReifier;
 import org.apache.camel.reifier.validator.ValidatorReifier;
 import org.apache.camel.spi.FactoryFinderResolver;
 import org.apache.camel.spi.ModelJAXBContextFactory;
+import org.apache.camel.spi.ModelToXMLDumper;
 import org.apache.camel.spi.Registry;
 import org.apache.camel.spi.TypeConverterLoader;
 import org.apache.camel.spi.TypeConverterRegistry;
+import org.apache.camel.spi.XMLRoutesDefinitionLoader;
 
 @Recorder
 public class CamelRecorder {
@@ -59,18 +61,22 @@ public class CamelRecorder {
             RuntimeValue<Registry> registry,
             RuntimeValue<TypeConverterRegistry> typeConverterRegistry,
             RuntimeValue<ModelJAXBContextFactory> contextFactory,
-            RuntimeValue<XmlRoutesLoader> xmlLoader,
+            RuntimeValue<XMLRoutesDefinitionLoader> xmlLoader,
+            RuntimeValue<ModelToXMLDumper> xmlModelDumper,
             RuntimeValue<FactoryFinderResolver> factoryFinderResolver,
             BeanContainer beanContainer,
             String version) {
-        FastCamelContext context = new FastCamelContext(factoryFinderResolver.getValue(), version);
+
+        FastCamelContext context = new FastCamelContext(
+                factoryFinderResolver.getValue(),
+                version,
+                xmlLoader.getValue(),
+                xmlModelDumper.getValue());
+
         context.setRegistry(registry.getValue());
         context.setTypeConverterRegistry(typeConverterRegistry.getValue());
         context.setLoadTypeConverters(false);
         context.setModelJAXBContextFactory(contextFactory.getValue());
-
-        FastModel model = new FastModel(context, xmlLoader.getValue());
-        context.setModel(model);
         context.init();
 
         // register to the container
@@ -118,8 +124,12 @@ public class CamelRecorder {
         return new RuntimeValue<>(new DisabledModelJAXBContextFactory());
     }
 
-    public RuntimeValue<XmlRoutesLoader> newDisabledXmlRoutesLoader() {
-        return new RuntimeValue<>(new DisabledXmlRoutesLoader());
+    public RuntimeValue<XMLRoutesDefinitionLoader> newDisabledXMLRoutesDefinitionLoader() {
+        return new RuntimeValue<>(new DisabledXMLRoutesDefinitionLoader());
+    }
+
+    public RuntimeValue<ModelToXMLDumper> newDisabledModelToXMLDumper() {
+        return new RuntimeValue<>(new DisabledModelToXMLDumper());
     }
 
     public RuntimeValue<RegistryRoutesLoader> newDefaultRegistryRoutesLoader() {

@@ -29,7 +29,6 @@ import org.apache.camel.component.microprofile.config.CamelMicroProfilePropertie
 import org.apache.camel.health.HealthCheckRegistry;
 import org.apache.camel.impl.DefaultExecutorServiceManager;
 import org.apache.camel.impl.engine.AbstractCamelContext;
-import org.apache.camel.impl.engine.BaseRouteService;
 import org.apache.camel.impl.engine.BeanProcessorFactoryResolver;
 import org.apache.camel.impl.engine.BeanProxyFactoryResolver;
 import org.apache.camel.impl.engine.DefaultAsyncProcessorAwaitManager;
@@ -62,7 +61,6 @@ import org.apache.camel.impl.transformer.TransformerKey;
 import org.apache.camel.impl.validator.ValidatorKey;
 import org.apache.camel.model.Model;
 import org.apache.camel.processor.MulticastProcessor;
-import org.apache.camel.quarkus.core.FastModel.FastRouteContext;
 import org.apache.camel.spi.AsyncProcessorAwaitManager;
 import org.apache.camel.spi.BeanIntrospection;
 import org.apache.camel.spi.BeanProcessorFactory;
@@ -82,6 +80,7 @@ import org.apache.camel.spi.LanguageResolver;
 import org.apache.camel.spi.ManagementNameStrategy;
 import org.apache.camel.spi.MessageHistoryFactory;
 import org.apache.camel.spi.ModelJAXBContextFactory;
+import org.apache.camel.spi.ModelToXMLDumper;
 import org.apache.camel.spi.NodeIdFactory;
 import org.apache.camel.spi.PackageScanClassResolver;
 import org.apache.camel.spi.PackageScanResourceResolver;
@@ -99,31 +98,29 @@ import org.apache.camel.spi.TypeConverterRegistry;
 import org.apache.camel.spi.UnitOfWorkFactory;
 import org.apache.camel.spi.UuidGenerator;
 import org.apache.camel.spi.ValidatorRegistry;
+import org.apache.camel.spi.XMLRoutesDefinitionLoader;
 
 public class FastCamelContext extends AbstractCamelContext {
-    private Model model;
+    private final Model model;
     private final String version;
+    private final XMLRoutesDefinitionLoader xmlLoader;
+    private final ModelToXMLDumper modelDumper;
 
-    public FastCamelContext(FactoryFinderResolver factoryFinderResolver, String version) {
+    public FastCamelContext(FactoryFinderResolver factoryFinderResolver, String version, XMLRoutesDefinitionLoader xmlLoader,
+            ModelToXMLDumper modelDumper) {
         super(false);
+
         this.version = version;
+        this.xmlLoader = xmlLoader;
+        this.modelDumper = modelDumper;
+        this.model = new FastModel(this);
+
         setFactoryFinderResolver(factoryFinderResolver);
         setTracing(Boolean.FALSE);
         setDebugging(Boolean.FALSE);
         setMessageHistory(Boolean.FALSE);
-
         setDefaultExtension(HealthCheckRegistry.class, DefaultHealthCheckRegistry::new);
-    }
 
-    public void setModel(Model model) {
-        this.model = model;
-    }
-
-    public void clearModel() {
-        this.model = null;
-        for (BaseRouteService rs : getRouteServices().values()) {
-            ((FastRouteContext) rs.getRouteContext()).clearModel();
-        }
     }
 
     @Override
@@ -296,12 +293,21 @@ public class FastCamelContext extends AbstractCamelContext {
         pc.addPropertiesSource(new CamelMicroProfilePropertiesSource());
 
         return pc;
-
     }
 
     @Override
     protected PackageScanResourceResolver createPackageScanResourceResolver() {
         return new DefaultPackageScanResourceResolver();
+    }
+
+    @Override
+    protected XMLRoutesDefinitionLoader createXMLRoutesDefinitionLoader() {
+        return xmlLoader;
+    }
+
+    @Override
+    protected ModelToXMLDumper createModelToXMLDumper() {
+        return modelDumper;
     }
 
     @Override
