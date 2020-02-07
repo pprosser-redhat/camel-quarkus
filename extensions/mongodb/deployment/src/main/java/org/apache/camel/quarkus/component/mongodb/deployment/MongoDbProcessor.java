@@ -16,7 +16,7 @@
  */
 package org.apache.camel.quarkus.component.mongodb.deployment;
 
-import com.mongodb.MongoClient;
+import io.quarkus.deployment.annotations.BuildProducer;
 import io.quarkus.deployment.annotations.BuildStep;
 import io.quarkus.deployment.annotations.ExecutionTime;
 import io.quarkus.deployment.annotations.Record;
@@ -34,12 +34,20 @@ class MongoDbProcessor {
         return new FeatureBuildItem(FEATURE);
     }
 
+    // TODO: needs to be reviewed once https://github.com/quarkusio/quarkus/pull/7063 is merged
     @BuildStep
     @Record(ExecutionTime.RUNTIME_INIT)
-    CamelRuntimeBeanBuildItem registerCamelMongoClientProducer(MongoClientBuildItem mongoClientBuildItem,
+    void registerCamelMongoClientProducer(
+            MongoClientBuildItem mongoClient,
+            BuildProducer<CamelRuntimeBeanBuildItem> runtimeBeans,
             CamelMongoClientRecorder recorder) {
 
-        return new CamelRuntimeBeanBuildItem("camelMongoClient", MongoClient.class.getName(),
-                recorder.createCamelMongoClient(mongoClientBuildItem.getClient()));
+        if (mongoClient != null) {
+            runtimeBeans.produce(
+                    new CamelRuntimeBeanBuildItem(
+                            "camelMongoClient",
+                            "com.mongodb.MongoClient",
+                            recorder.createCamelMongoClient(mongoClient.getClient())));
+        }
     }
 }
